@@ -1,0 +1,71 @@
+services:
+  ms-keycloak:
+    container_name: keycloak
+    image: quay.io/keycloak/keycloak:latest
+    command:
+      - start-dev
+    networks:
+      - spring-demo-network
+    ports:
+      - "${KEYCLOAK_SERVER_PORT_EXTERNAL}:${KEYCLOAK_SERVER_PORT_INTERNAL}"
+    environment:
+      - KC_BOOTSTRAP_ADMIN_USERNAME=${KEYCLOAK_BOOTSTRAP_ADMIN_USERNAME}
+      - KC_BOOTSTRAP_ADMIN_PASSWORD=${KEYCLOAK_BOOTSTRAP_ADMIN_PASSWORD}
+      - KC_DB=postgres
+      - KC_DB_URL=jdbc:postgresql://${KEYCLOAK_POSTGRES_SERVER_ADDRESS}:5432/${KEYCLOAK_POSTGRES_DATABASE}
+      - KC_DB_USERNAME=${KEYCLOAK_POSTGRES_USERNAME}
+      - KC_DB_PASSWORD=${KEYCLOAK_POSTGRES_PASSWORD}
+      - KC_HEALTH_ENABLED=true
+    healthcheck:
+      test: [ "CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && echo -e 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 && grep -q 'HTTP/1.1 200 OK' <&3" ]
+      start_period: 10s
+      interval: 5s
+      timeout: 5s
+      retries: 15
+    restart: unless-stopped
+    depends_on:
+      ms-keycloak-postgres:
+        condition: service_healthy
+
+  ms-keycloak-postgres:
+    container_name: keycloak-postgres
+    image: postgres:18-alpine
+    networks:
+      - spring-demo-network
+    ports:
+      - "${KEYCLOAK_POSTGRES_SERVER_PORT_EXTERNAL}:${KEYCLOAK_POSTGRES_SERVER_PORT_INTERNAL}"
+    environment:
+      - POSTGRES_DB=${KEYCLOAK_POSTGRES_DATABASE}
+      - POSTGRES_USER=${KEYCLOAK_POSTGRES_USERNAME}
+      - POSTGRES_PASSWORD=${KEYCLOAK_POSTGRES_PASSWORD}
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-U", "${KEYCLOAK_POSTGRES_USERNAME}", "-d", "${KEYCLOAK_POSTGRES_DATABASE}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+    restart: unless-stopped
+
+  ms-config-service:
+    container_name: config-service
+    image: config-service
+    build:
+      context: ./config-service
+    networks:
+      - spring-demo-network
+    ports:
+      - "${CONFIG_SERVER_PORT}:${CONFIG_SERVER_PORT}"
+    environment:
+      - CONFIG_SERVER_PORT=${CONFIG_SERVER_PORT}
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:${CONFIG_SERVER_PORT}/actuator/health" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+networks:
+  spring-demo-network:
+    driver: bridge
+
+volumes:
+  keycloak-postgres-data:
