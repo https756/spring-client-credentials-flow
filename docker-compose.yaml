@@ -63,6 +63,33 @@ services:
       retries: 10
     restart: unless-stopped
 
+  ms-resource-service:
+    container_name: resource-service
+    image: resource-service
+    build:
+      context: ./resource-service
+    networks:
+      - spring-demo-network
+    ports:
+      - "${RESOURCE_SERVER_PORT}:${RESOURCE_SERVER_PORT}"
+    environment:
+      - CONFIG_SERVER_ADDRESS=${CONFIG_SERVER_ADDRESS}
+      - CONFIG_SERVER_PORT=${CONFIG_SERVER_PORT}
+      - RESOURCE_SERVER_PORT=${RESOURCE_SERVER_PORT}
+      - KEYCLOAK_SERVER_ADDRESS=${KEYCLOAK_SERVER_ADDRESS}
+      - KEYCLOAK_SERVER_PORT_INTERNAL=${KEYCLOAK_SERVER_PORT_INTERNAL}
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:${RESOURCE_SERVER_PORT}/actuator/health" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    depends_on:
+      ms-config-service:
+        condition: service_healthy
+      ms-keycloak:
+        condition: service_healthy
+
 networks:
   spring-demo-network:
     driver: bridge

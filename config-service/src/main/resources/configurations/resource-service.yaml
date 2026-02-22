@@ -1,0 +1,15 @@
+server:
+  port: ${RESOURCE_SERVER_PORT}
+
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://${KEYCLOAK_SERVER_ADDRESS}:${KEYCLOAK_SERVER_PORT_INTERNAL}/realms/client-credentials-flow
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
