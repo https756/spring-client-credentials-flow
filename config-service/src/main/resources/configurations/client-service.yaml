@@ -1,0 +1,27 @@
+server:
+  port: ${CLIENT_SERVER_PORT}
+
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          client-service:
+            provider: keycloak
+            client-id: client-service
+            client-secret: ${CLIENT_KC_CLIENT_SECRET}
+            authorization-grant-type: client_credentials
+            scope:
+              - internal-api
+        provider:
+          keycloak:
+            token-uri: http://${KEYCLOAK_SERVER_ADDRESS}:${KEYCLOAK_SERVER_PORT_INTERNAL}/realms/client-credentials-flow/protocol/openid-connect/token
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+resource-service:
+  base-url: http://${RESOURCE_SERVER_ADDRESS}:${RESOURCE_SERVER_PORT} # Error creating bean with name 'httpServiceProxyRegistry': Could not resolve placeholder   :(
